@@ -3,6 +3,7 @@ import https from 'https'
 import socketIO from 'socket.io'
 
 import enums from '../enums'
+import events from './events'
 
 const createServer = (server: http.Server | https.Server): socketIO.Server => {
   const io = socketIO(server, {
@@ -23,15 +24,7 @@ const createNamespace = ({
 }: ICreateNamespace): socketIO.Namespace => {
   const namespace = socketIOServer.of(path)
 
-  namespace.on(enums.events.connect, (socket: socketIO.Socket) => {
-    const { username } = socket.handshake.query
-
-    console.log(`${username} connected`)
-
-    socket.on(enums.events.disconnect, () => {
-      console.log(`${username} disconnected`)
-    })
-  })
+  namespace.on(enums.events.connect, events.onUserConnect)
 
   return namespace
 }
