@@ -3,51 +3,38 @@ import socketIO from 'socket.io'
 import redis from '../database/redis'
 import enums from '../enums'
 
-const getOnUserReady = (socket: socketIO.Socket) => (): void => {
-  redis.hget(socket.id, 'username', (err, username) => {
+interface UserEvents {
+  socket: socketIO.Socket
+  username: string
+}
+
+const getOnUserReady = ({ socket, username }: UserEvents) => (): void => {
+  redis.hset(socket.id, 'ready', 'true', (err) => {
     if (err) {
       throw err
     } else {
-      redis.hset(socket.id, 'ready', 'true', (err) => {
-        if (err) {
-          throw err
-        } else {
-          socket.broadcast.emit(enums.events.user_ready, { username })
-        }
-      })
+      socket.broadcast.emit(enums.events.user_ready, { username })
     }
   })
 }
 
-const getOnUserUnready = (socket: socketIO.Socket) => (): void => {
-  redis.hget(socket.id, 'username', (err, username) => {
+const getOnUserUnready = ({ socket, username }: UserEvents) => (): void => {
+  redis.hset(socket.id, 'ready', 'false', (err) => {
     if (err) {
       throw err
     } else {
-      redis.hset(socket.id, 'ready', 'false', (err) => {
-        if (err) {
-          throw err
-        } else {
-          socket.broadcast.emit(enums.events.user_unready, { username })
-        }
-      })
+      socket.broadcast.emit(enums.events.user_unready, { username })
     }
   })
 }
 
-const getOnUserDisconnect = (socket: socketIO.Socket) => (): void => {
-  redis.hget(socket.id, 'username', (err, username) => {
+const getOnUserDisconnect = ({ socket, username }: UserEvents) => (): void => {
+  redis.del(socket.id, (err) => {
     if (err) {
       throw err
     } else {
-      redis.del(socket.id, (err) => {
-        if (err) {
-          throw err
-        } else {
-          socket.broadcast.emit(enums.events.user_disconnect, { username })
-          console.log(`${username} disconnected`)
-        }
-      })
+      socket.broadcast.emit(enums.events.user_disconnect, { username })
+      console.log(`${username} disconnected`)
     }
   })
 }
@@ -59,9 +46,9 @@ const onUserConnect = (socket: socketIO.Socket): void => {
     if (err) {
       throw err
     } else {
-      const onUserReady = getOnUserReady(socket)
-      const onUserUnready = getOnUserUnready(socket)
-      const onUserDisconnect = getOnUserDisconnect(socket)
+      const onUserReady = getOnUserReady({ socket, username })
+      const onUserUnready = getOnUserUnready({ socket, username })
+      const onUserDisconnect = getOnUserDisconnect({ socket, username })
 
       socket.on(enums.events.ready, onUserReady)
       socket.on(enums.events.unready, onUserUnready)
