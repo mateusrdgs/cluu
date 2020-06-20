@@ -1,3 +1,4 @@
+import util from 'util'
 import redis from 'redis'
 import dotenv from 'dotenv'
 
@@ -16,7 +17,12 @@ client.on('ready', () => {
 })
 
 client.on('error', (err) => {
-  console.error(err)
+  throw err
 })
 
-export default client
+export default {
+  del: (util.promisify(client.del) as (
+    args: string | string[]
+  ) => Promise<number>).bind(client),
+  hset: util.promisify(client.hset).bind(client),
+}
