@@ -1,7 +1,8 @@
 import express from 'express'
-import { v4 as uuid } from 'uuid'
 
 import sockets from '../sockets'
+
+const playersValidOptions = [4, 6, 8, 10]
 
 interface PlayerControllers {
   start: (req: express.Request, res: express.Response) => void
@@ -10,12 +11,19 @@ interface PlayerControllers {
 const createMatchControllers = (
   socketIOServer: SocketIO.Server
 ): PlayerControllers => {
-  const start = (_: express.Request, res: express.Response): void => {
-    const path = uuid()
-
-    sockets.createNamespace({ socketIOServer, path })
-
-    res.send({ path })
+  const start = (req: express.Request, res: express.Response): void => {
+    const max_players = req.body.max_players as string
+    const maxPlayers = parseInt(max_players, 10)
+    const isValidOption = playersValidOptions.some(
+      (option) => option === maxPlayers
+    )
+    if (isValidOption) {
+      sockets
+        .createNamespace({ socketIOServer, maxPlayers })
+        .then((path) => res.send({ path }))
+    } else {
+      res.status(400).send({ message: '' })
+    }
   }
 
   return {

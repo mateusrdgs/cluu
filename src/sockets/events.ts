@@ -8,17 +8,50 @@ interface UserEvents {
   username: string
 }
 
+interface UserReady extends UserEvents {
+  namespace: socketIO.Namespace
+}
+
+const getNamespaceName = (namespace: socketIO.Namespace): string =>
+  namespace.name.replace('/', '')
+
 const throwErr = (err: Error) => {
   throw err
 }
 
-const getOnUserReady = ({ socket, username }: UserEvents) => (): void => {
+const checkCanStartGame = (namespace: socketIO.Namespace) => () => {
+  const namespaceName = getNamespaceName(namespace)
+
+  return redis.smembers(namespaceName).then((members) => {
+    const checkStatusIsTrue = (status: string) => status === 'true'
+
+    const checkEveryPlayerIsReady = (playersStatus: boolean[]) =>
+      playersStatus.every((status) => status === true)
+
+    const membersStatus = members.map((member) =>
+      redis.hget(member, 'ready').then(checkStatusIsTrue)
+    )
+
+    return Promise.all(membersStatus)
+      .then(checkEveryPlayerIsReady)
+      .then((isEveryPlayerReady) => {
+        console.log(`Is every player ready? `, isEveryPlayerReady)
+      })
+  })
+}
+
+const getOnUserReady = ({
+  socket,
+  username,
+  namespace,
+}: UserReady) => (): void => {
   const broadcastUserReady = () =>
     socket.broadcast.emit(enums.events.user_ready, { username })
 
   redis
     .hset(socket.id, 'ready', 'true')
     .then(broadcastUserReady)
+    .then(checkCanStartGame(namespace))
     .catch(throwErr)
 }
 
@@ -41,11 +74,13 @@ const getOnUserDisconnect = ({ socket, username }: UserEvents) => (): void => {
   redis.del(socket.id).then(broadcastUserDisconnected).catch(throwErr)
 }
 
-const onUserConnect = (socket: socketIO.Socket): void => {
+const onUserConnect = (namespace: socketIO.Namespace) => (
+  socket: socketIO.Socket
+): void => {
   const { username } = socket.handshake.query
 
-  const onSetUsername = () => {
-    const onUserReady = getOnUserReady({ socket, username })
+  const onSetSocketId = () => {
+    const onUserReady = getOnUserReady({ socket, username, namespace })
     const onUserUnready = getOnUserUnready({ socket, username })
     const onUserDisconnect = getOnUserDisconnect({ socket, username })
 
@@ -58,10 +93,9 @@ const onUserConnect = (socket: socketIO.Socket): void => {
     console.log(`${username} connected`)
   }
 
-  redis
-    .hset(socket.id, 'username', username)
-    .then(onSetUsername)
-    .catch(throwErr)
+  const namespaceName = getNamespaceName(namespace)
+
+  redis.sadd(namespaceName, socket.id).then(onSetSocketId).catch(throwErr)
 }
 
 export default {

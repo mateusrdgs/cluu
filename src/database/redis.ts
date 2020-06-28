@@ -21,8 +21,37 @@ client.on('error', (err) => {
 })
 
 export default {
-  del: (util.promisify(client.del) as (
-    args: string | string[]
-  ) => Promise<number>).bind(client),
-  hset: util.promisify(client.hset).bind(client),
+  del: util.promisify(client.del).bind(client) as del,
+  hget: util.promisify(client.hget).bind(client) as hget,
+  hset: util.promisify(client.hset).bind(client) as hset,
+  sadd: util.promisify(client.sadd).bind(client) as sadd,
+  scard: util.promisify(client.sadd).bind(client) as scard,
+  smembers: util.promisify(client.smembers).bind(client) as smembers,
 }
+
+//#region types
+type del = (...args: (string | redis.Callback<number>)[]) => Promise<number>
+
+type hset = (
+  key: string,
+  field: string,
+  value: string,
+  cb?: redis.Callback<number>
+) => Promise<number>
+
+type hget = (
+  key: string,
+  field: string,
+  cb?: redis.Callback<string> | undefined
+) => Promise<string>
+
+type sadd = (...args: (string | redis.Callback<number>)[]) => Promise<number>
+
+type scard = (...args: (string | redis.Callback<number>)[]) => Promise<number>
+
+type smembers = (
+  key: string,
+  cb?: redis.Callback<string[]> | undefined
+) => Promise<string[]>
+
+//#endregion

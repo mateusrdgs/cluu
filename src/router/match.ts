@@ -7,7 +7,7 @@ const createMatchRouting = (
   const router = express.Router()
   const controller = createMatchControllers(socketIOServer)
 
-  router.get('/start', controller.start)
+  router.post('/start', controller.start)
 
   return router
 }

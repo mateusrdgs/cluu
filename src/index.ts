@@ -3,6 +3,7 @@ import os from 'os'
 import path from 'path'
 import dotenv from 'dotenv'
 import express, { Request, Response } from 'express'
+import bodyParser from 'body-parser'
 import http from 'http'
 import helmet from 'helmet'
 import morgan from 'morgan'
@@ -34,6 +35,7 @@ if (IS_PROD && cluster.isMaster) {
 
   app.use(helmet())
   app.use(logger())
+  app.use(bodyParser.json())
   app.use('/api', routes)
 
   app.use((_: Request, res: Response) => {
