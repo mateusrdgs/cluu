@@ -1,6 +1,6 @@
 import http from 'http'
 import https from 'https'
-import socketIO from 'socket.io'
+import SocketIO from 'socket.io'
 import { v4 as uuid } from 'uuid'
 
 import redis from '../database/redis'
@@ -9,16 +9,16 @@ import events from './events'
 
 const parseToInteger = (s: string) => parseInt(s, 10)
 
-const createServer = (server: http.Server | https.Server): socketIO.Server => {
-  const io = socketIO(server, {
+const createServer = (server: http.Server | https.Server): SocketIO.Server => {
+  const io = SocketIO(server, {
     serveClient: false,
   })
 
   return io
 }
 
-const onConnection = (namespace: socketIO.Namespace) => (
-  socket: socketIO.Socket,
+const onConnection = (namespace: SocketIO.Namespace) => (
+  socket: SocketIO.Socket,
   next: (err?: unknown) => void
 ): void => {
   redis
@@ -40,7 +40,7 @@ const onConnection = (namespace: socketIO.Namespace) => (
 }
 
 interface CreateNamespace {
-  socketIOServer: socketIO.Server
+  socketIOServer: SocketIO.Server
   maxPlayers: number
 }
 
@@ -51,10 +51,12 @@ const createNamespace = ({
   return new Promise((resolve) => {
     const path = uuid()
     const namespace = socketIOServer.of(path)
+
     const onSetMaxPlayers = () => {
       namespace.use(onConnection(namespace))
-      namespace.on(enums.events.connect, events.onUserConnect(namespace))
+      namespace.on(enums.events.connect, events.onUserConnect(namespace.name))
     }
+
     const resolveNamespacePath = () => resolve(path)
 
     redis
