@@ -8,7 +8,8 @@ import http from 'http'
 import helmet from 'helmet'
 import morgan from 'morgan'
 
-import sockets from './sockets'
+import { startRedis } from './database/redis'
+import { createSocket } from './socket'
 import router from './router'
 
 dotenv.config()
@@ -16,6 +17,17 @@ dotenv.config()
 const PORT = process.env.PORT || 3000
 const IS_PROD = process.env.NODE_ENV === 'prod'
 const LOGGER_FORMAT = IS_PROD ? 'combined' : 'dev'
+const REDIS_HOST = process.env.REDIS_HOST
+const REDIS_PORT = (process.env.REDIS_PORT as unknown) as number
+const REDIS_PASSWORD = process.env.REDIS_password
+
+const redis = startRedis({
+  host: REDIS_HOST,
+  port: REDIS_PORT,
+  password: REDIS_PASSWORD,
+})
+
+const socketWithRedis = createSocket(redis)
 
 if (IS_PROD && cluster.isMaster) {
   const cpuCount = os.cpus().length
@@ -25,8 +37,8 @@ if (IS_PROD && cluster.isMaster) {
 } else {
   const app = express()
   const server = http.createServer(app)
-  const socketIOServer = sockets.createServer(server)
-  const routes = router.createRouter(socketIOServer)
+  const socket = socketWithRedis(server)
+  const routes = router.createRouter(socket)
   const logger = () => morgan(LOGGER_FORMAT)
 
   if (!IS_PROD) {

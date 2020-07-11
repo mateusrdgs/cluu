@@ -1,11 +1,11 @@
 import express from 'express'
 import createMatchControllers from '../controllers/match'
 
-const createMatchRouting = (
-  socketIOServer: SocketIO.Server
-): express.Router => {
+import Socket from '../utils/interfaces/socket'
+
+const createMatchRouting = (socket: Socket): express.Router => {
   const router = express.Router()
-  const controller = createMatchControllers(socketIOServer)
+  const controller = createMatchControllers(socket)
 
   router.post('/start', controller.start)
 
